@@ -4,7 +4,7 @@ import {
 } from "@medusajs/framework/utils"
 
 export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
-  const manager = req.scope.resolve(ContainerRegistrationKeys.MANAGER)
+  const manager = req.scope.resolve(ContainerRegistrationKeys.MANAGER) as any
   const productId = req.params.id
 
   const rows = await manager.execute(
