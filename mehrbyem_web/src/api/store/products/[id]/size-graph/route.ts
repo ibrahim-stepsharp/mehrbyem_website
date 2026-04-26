@@ -4,10 +4,10 @@ import {
 } from "@medusajs/framework/utils"
 
 export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
-  const manager = req.scope.resolve(ContainerRegistrationKeys.MANAGER) as any
+  const pgConnection = req.scope.resolve(ContainerRegistrationKeys.PG_CONNECTION) as any
   const productId = req.params.id
 
-  const rows = await manager.execute(
+  const result = await pgConnection.raw(
     `
       select
         sg.id,
@@ -29,6 +29,6 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
   )
 
   res.json({
-    size_graph: rows?.[0] || null,
+    size_graph: result.rows?.[0] || null,
   })
 }
