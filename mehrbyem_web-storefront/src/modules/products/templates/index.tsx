@@ -8,6 +8,7 @@ import ProductInfo from "@modules/products/templates/product-info"
 import SkeletonRelatedProducts from "@modules/skeletons/templates/skeleton-related-products"
 import { notFound } from "next/navigation"
 import { HttpTypes } from "@medusajs/types"
+import { ProductSizeGraph } from "types/global"
 
 import ProductActionsWrapper from "./product-actions-wrapper"
 
@@ -16,6 +17,7 @@ type ProductTemplateProps = {
   region: HttpTypes.StoreRegion
   countryCode: string
   images: HttpTypes.StoreProductImage[]
+  sizeGraph: ProductSizeGraph | null
 }
 
 const ProductTemplate: React.FC<ProductTemplateProps> = ({
@@ -23,9 +25,23 @@ const ProductTemplate: React.FC<ProductTemplateProps> = ({
   region,
   countryCode,
   images,
+  sizeGraph,
 }) => {
   if (!product || !product.id) {
     return notFound()
+  }
+
+  // Append size graph image if it exists
+  const galleryImages = [...(images || [])]
+  if (sizeGraph?.image) {
+    galleryImages.push({
+      id: "size-graph",
+      url: sizeGraph.image,
+      created_at: new Date(),
+      updated_at: new Date(),
+      deleted_at: null,
+      metadata: null,
+    } as any)
   }
 
   return (
@@ -36,7 +52,7 @@ const ProductTemplate: React.FC<ProductTemplateProps> = ({
       >
         {/* Left Column: Image Gallery - Capped at 500px for a more compact look */}
         <div className="block w-full relative small:w-[500px] flex-shrink-0">
-          <ImageGallery images={images} />
+          <ImageGallery images={galleryImages} />
         </div>
 
         {/* Right Column: Info, Actions, Tabs */}
@@ -50,14 +66,19 @@ const ProductTemplate: React.FC<ProductTemplateProps> = ({
                   disabled={true}
                   product={product}
                   region={region}
+                  sizeGraph={sizeGraph}
                 />
               }
             >
-              <ProductActionsWrapper id={product.id} region={region} />
+              <ProductActionsWrapper 
+                id={product.id} 
+                region={region} 
+                sizeGraph={sizeGraph}
+              />
             </Suspense>
           </div>
 
-          <ProductTabs product={product} />
+          <ProductTabs product={product} sizeGraph={sizeGraph} />
         </div>
       </div>
 

@@ -3,7 +3,7 @@
 import { addToCart } from "@lib/data/cart"
 import { useIntersection } from "@lib/hooks/use-in-view"
 import { HttpTypes } from "@medusajs/types"
-import { Button } from "@medusajs/ui"
+import { Button, Text } from "@medusajs/ui"
 import Divider from "@modules/common/components/divider"
 import OptionSelect from "@modules/products/components/product-actions/option-select"
 import { isEqual } from "lodash"
@@ -12,11 +12,14 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import ProductPrice from "../product-price"
 import MobileActions from "./mobile-actions"
 import { useRouter } from "next/navigation"
+import { ProductSizeGraph } from "types/global"
+import { ExclamationCircleSolid, SquaresPlus } from "@medusajs/icons"
 
 type ProductActionsProps = {
   product: HttpTypes.StoreProduct
   region: HttpTypes.StoreRegion
   disabled?: boolean
+  sizeGraph?: ProductSizeGraph | null
 }
 
 const optionsAsKeymap = (
@@ -31,6 +34,7 @@ const optionsAsKeymap = (
 export default function ProductActions({
   product,
   disabled,
+  sizeGraph,
 }: ProductActionsProps) {
   const router = useRouter()
   const pathname = usePathname()
@@ -139,6 +143,10 @@ export default function ProductActions({
     setIsAdding(false)
   }
 
+  const handleViewSizeChart = () => {
+    window.dispatchEvent(new CustomEvent("view-size-chart"))
+  }
+
   return (
     <>
       <div className="flex flex-col gap-y-2" ref={actionsRef}>
@@ -186,6 +194,27 @@ export default function ProductActions({
             ? "Out of stock"
             : "Add to cart"}
         </Button>
+
+        {sizeGraph && (
+          <div className="flex flex-col gap-y-4 mt-4">
+            <button
+              onClick={handleViewSizeChart}
+              className="flex items-center gap-x-2 text-ui-fg-subtle hover:text-ui-fg-base transition-colors text-small-regular"
+            >
+              <SquaresPlus />
+              <span>View Size Guide</span>
+            </button>
+            
+            <div className="flex items-start gap-x-3 p-4 bg-ui-bg-subtle rounded-lg border border-ui-border-base">
+              <ExclamationCircleSolid className="text-ui-fg-subtle mt-0.5" />
+              <Text className="text-ui-fg-subtle text-xsmall-regular">
+                Note: This dress is made-to-order based on your body dimensions. 
+                Please refer to the size chart and confirm your selected size.
+              </Text>
+            </div>
+          </div>
+        )}
+
         <MobileActions
           product={product}
           variant={selectedVariant}

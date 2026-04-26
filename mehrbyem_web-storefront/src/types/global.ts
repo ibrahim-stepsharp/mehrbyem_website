@@ -22,3 +22,10 @@ export type StoreFreeShippingPrice = StorePrice & {
   target_remaining: number
   remaining_percentage: number
 }
+
+export type ProductSizeGraph = {
+  id: string
+  name: string
+  image: string
+  description: string | null
+}

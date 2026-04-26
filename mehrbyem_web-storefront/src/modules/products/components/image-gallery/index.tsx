@@ -3,7 +3,7 @@
 import { HttpTypes } from "@medusajs/types"
 import { clx } from "@medusajs/ui"
 import Image from "next/image"
-import React, { useState } from "react"
+import React, { useEffect, useState } from "react"
 
 type ImageGalleryProps = {
   images: HttpTypes.StoreProductImage[]
@@ -13,6 +13,26 @@ const ImageGallery = ({ images }: ImageGalleryProps) => {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isZoomed, setIsZoomed] = useState(false)
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
+
+  useEffect(() => {
+    const handleViewSizeChart = () => {
+      if (images.length > 0) {
+        // Find the index of the size graph image (it's appended at the end in ProductTemplate)
+        const sizeGraphIndex = images.findIndex((img) => img.id === "size-graph")
+        if (sizeGraphIndex !== -1) {
+          setCurrentIndex(sizeGraphIndex)
+          // Scroll to the gallery
+          const element = document.getElementById("product-gallery")
+          if (element) {
+            element.scrollIntoView({ behavior: "smooth" })
+          }
+        }
+      }
+    }
+
+    window.addEventListener("view-size-chart", handleViewSizeChart)
+    return () => window.removeEventListener("view-size-chart", handleViewSizeChart)
+  }, [images])
 
   if (!images.length) return null
 
@@ -32,7 +52,7 @@ const ImageGallery = ({ images }: ImageGalleryProps) => {
   }
 
   return (
-    <div className="flex flex-col gap-y-4 w-full">
+    <div className="flex flex-col gap-y-4 w-full" id="product-gallery">
       {/* Main Image with Hover Zoom */}
       <div 
         className="relative aspect-[3/4] w-full overflow-hidden bg-surface-container-low rounded-2xl group cursor-zoom-in"

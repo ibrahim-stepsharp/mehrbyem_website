@@ -1,6 +1,7 @@
-import { listProducts } from "@lib/data/products"
+import { getProductSizeGraph, listProducts } from "@lib/data/products"
 import { HttpTypes } from "@medusajs/types"
 import ProductActions from "@modules/products/components/product-actions"
+import { ProductSizeGraph } from "types/global"
 
 /**
  * Fetches real time pricing for a product and renders the product actions component.
@@ -8,9 +9,11 @@ import ProductActions from "@modules/products/components/product-actions"
 export default async function ProductActionsWrapper({
   id,
   region,
+  sizeGraph: passedSizeGraph,
 }: {
   id: string
   region: HttpTypes.StoreRegion
+  sizeGraph?: ProductSizeGraph | null
 }) {
   const product = await listProducts({
     queryParams: { id: [id] },
@@ -21,5 +24,11 @@ export default async function ProductActionsWrapper({
     return null
   }
 
-  return <ProductActions product={product} region={region} />
+  const sizeGraph = passedSizeGraph !== undefined 
+    ? passedSizeGraph 
+    : await getProductSizeGraph(product.id)
+
+  return (
+    <ProductActions product={product} region={region} sizeGraph={sizeGraph} />
+  )
 }

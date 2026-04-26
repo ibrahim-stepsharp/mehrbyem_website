@@ -6,42 +6,15 @@ import Refresh from "@modules/common/icons/refresh"
 
 import Accordion from "./accordion"
 import { HttpTypes } from "@medusajs/types"
-import { useEffect, useState } from "react"
 import { Text } from "@medusajs/ui"
+import { ProductSizeGraph } from "types/global"
 
 type ProductTabsProps = {
   product: HttpTypes.StoreProduct
+  sizeGraph: ProductSizeGraph | null
 }
 
-const ProductTabs = ({ product }: ProductTabsProps) => {
-  const [sizeGraph, setSizeGraph] = useState<{
-    name: string
-    image: string
-    description: string | null
-  } | null>(null)
-
-  useEffect(() => {
-    const fetchSizeGraph = async () => {
-      try {
-        const response = await fetch(
-          `${
-            process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || "http://localhost:9000"
-          }/store/products/${product.id}/size-graph`
-        )
-        const data = await response.json()
-        if (data.size_graph) {
-          setSizeGraph(data.size_graph)
-        }
-      } catch (error) {
-        console.error("Failed to fetch size graph:", error)
-      }
-    }
-
-    if (product.id) {
-      fetchSizeGraph()
-    }
-  }, [product.id])
-
+const ProductTabs = ({ product, sizeGraph }: ProductTabsProps) => {
   const tabs = [
     {
       label: "Product Information",
@@ -92,7 +65,7 @@ const ProductTabs = ({ product }: ProductTabsProps) => {
   )
 }
 
-const ProductInfoTab = ({ product }: ProductTabsProps) => {
+const ProductInfoTab = ({ product }: { product: HttpTypes.StoreProduct }) => {
   return (
     <div className="text-small-regular py-8">
       <div className="grid grid-cols-2 gap-x-8">

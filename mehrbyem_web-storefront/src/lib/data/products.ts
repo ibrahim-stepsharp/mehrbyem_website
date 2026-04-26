@@ -3,7 +3,8 @@
 import { sdk } from "@lib/config"
 import { sortProducts } from "@lib/util/sort-products"
 import { HttpTypes } from "@medusajs/types"
-import { SortOptions } from "@modules/store/components/refinement-list/sort-products"
+import { SortOptions } from "@modules/store/components/product-filters"
+import { ProductSizeGraph } from "types/global"
 import { getAuthHeaders, getCacheOptions } from "./cookies"
 import { getRegion, retrieveRegion } from "./regions"
 
@@ -133,4 +134,26 @@ export const listProductsWithSort = async ({
     nextPage,
     queryParams,
   }
+}
+
+export const getProductSizeGraph = async (
+  id: string
+): Promise<ProductSizeGraph | null> => {
+  const headers = {
+    ...(await getAuthHeaders()),
+  }
+
+  const next = {
+    ...(await getCacheOptions("products")),
+  }
+
+  return sdk.client
+    .fetch<{ size_graph: ProductSizeGraph }>(`/store/products/${id}/size-graph`, {
+      method: "GET",
+      headers,
+      next,
+      cache: "force-cache",
+    })
+    .then((res) => res.size_graph)
+    .catch(() => null)
 }
