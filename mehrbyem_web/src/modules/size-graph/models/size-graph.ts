@@ -5,4 +5,5 @@ export const SizeGraph = model.define("size_graph", {
   name: model.text(),
   image: model.text(),
   description: model.text().nullable(),
+  parameters: model.json().default([]),
 })

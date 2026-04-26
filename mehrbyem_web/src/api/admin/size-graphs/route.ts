@@ -49,6 +49,7 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
   const description = payload.description
     ? `${payload.description}`.trim()
     : undefined
+  const parameters = payload.parameters || []
 
   if (!name) {
     throw new MedusaError(
@@ -68,6 +69,7 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
     name,
     image,
     description,
+    parameters,
   } as any)
 
   res.json({ size_graph })

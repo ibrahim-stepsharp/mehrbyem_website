@@ -28,4 +28,5 @@ export type ProductSizeGraph = {
   name: string
   image: string
   description: string | null
+  parameters?: any[]
 }

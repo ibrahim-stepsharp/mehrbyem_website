@@ -3,7 +3,7 @@
 import { addToCart } from "@lib/data/cart"
 import { useIntersection } from "@lib/hooks/use-in-view"
 import { HttpTypes } from "@medusajs/types"
-import { Button, Text } from "@medusajs/ui"
+import { Button, Text, Input, Label, Textarea, clx } from "@medusajs/ui"
 import Divider from "@modules/common/components/divider"
 import OptionSelect from "@modules/products/components/product-actions/option-select"
 import { isEqual } from "lodash"
@@ -41,6 +41,8 @@ export default function ProductActions({
   const searchParams = useSearchParams()
 
   const [options, setOptions] = useState<Record<string, string | undefined>>({})
+  const [measurements, setMeasurements] = useState<Record<string, any>>({})
+  const [customNote, setCustomNote] = useState("")
   const [isAdding, setIsAdding] = useState(false)
   const countryCode = useParams().countryCode as string
 
@@ -75,6 +77,13 @@ export default function ProductActions({
     }))
   }
 
+  const setMeasurementValue = (name: string, value: any) => {
+    setMeasurements((prev) => ({
+      ...prev,
+      [name]: value,
+    }))
+  }
+
   //check if the selected options produce a valid variant
   const isValidVariant = useMemo(() => {
     return product.variants?.some((v) => {
@@ -82,6 +91,17 @@ export default function ProductActions({
       return isEqual(variantOptions, options)
     })
   }, [product.variants, options])
+
+  const isMeasurementsValid = useMemo(() => {
+    if (!sizeGraph?.parameters || sizeGraph.parameters.length === 0) {
+      return true
+    }
+
+    return sizeGraph.parameters.every((p: any) => {
+      if (p.optional) return true
+      return measurements[p.name] !== undefined && measurements[p.name] !== ""
+    })
+  }, [sizeGraph, measurements])
 
   useEffect(() => {
     const params = new URLSearchParams(searchParams.toString())
@@ -134,10 +154,16 @@ export default function ProductActions({
 
     setIsAdding(true)
 
+    const metadata = {
+      ...measurements,
+      custom_note: customNote,
+    }
+
     await addToCart({
       variantId: selectedVariant.id,
       quantity: 1,
       countryCode,
+      metadata,
     })
 
     setIsAdding(false)
@@ -172,6 +198,80 @@ export default function ProductActions({
           )}
         </div>
 
+        {sizeGraph?.parameters && sizeGraph.parameters.length > 0 && (
+          <div className="flex flex-col gap-y-4 mb-4">
+            <Text className="text-ui-fg-base text-small-semi uppercase">
+              Custom Measurements
+            </Text>
+            {sizeGraph.parameters.map((param: any) => (
+              <div key={param.name} className="flex flex-col gap-y-2">
+                <Label className="text-ui-fg-subtle text-xsmall-regular">
+                  {param.name} {param.optional ? "(Optional)" : "*"}
+                </Label>
+                
+                {param.type === "buttons" && (
+                  <div className="flex flex-wrap gap-2">
+                    {param.options.map((option: any) => (
+                      <button
+                        key={option}
+                        onClick={() => setMeasurementValue(param.name, option)}
+                        className={clx(
+                          "flex-1 min-w-[50px] h-10 border rounded-md text-small-regular transition-all",
+                          measurements[param.name] === option
+                            ? "bg-ui-bg-base border-ui-border-interactive text-ui-fg-base"
+                            : "bg-ui-bg-subtle border-ui-border-base text-ui-fg-subtle hover:border-ui-border-strong"
+                        )}
+                      >
+                        {option}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {param.type === "slider" && (
+                  <div className="flex flex-col gap-y-2">
+                    <input
+                      type="range"
+                      min={param.min}
+                      max={param.max}
+                      step={param.step || 1}
+                      value={measurements[param.name] || param.min}
+                      onChange={(e) => setMeasurementValue(param.name, e.target.value)}
+                      className="w-full h-1.5 bg-ui-bg-subtle rounded-lg appearance-none cursor-pointer accent-ui-fg-interactive"
+                    />
+                    <div className="flex justify-between text-xsmall-regular text-ui-fg-muted">
+                      <span>{param.min}</span>
+                      <span className="text-ui-fg-base font-medium">{measurements[param.name] || param.min}</span>
+                      <span>{param.max}</span>
+                    </div>
+                  </div>
+                )}
+
+                {param.type === "input" && (
+                  <Input
+                    placeholder={`Enter ${param.name.toLowerCase()}...`}
+                    value={measurements[param.name] || ""}
+                    onChange={(e) => setMeasurementValue(param.name, e.target.value)}
+                  />
+                )}
+              </div>
+            ))}
+            <Divider />
+          </div>
+        )}
+
+        <div className="flex flex-col gap-y-2 mb-4">
+          <Label className="text-ui-fg-subtle text-xsmall-regular">
+            Additional Note (Optional)
+          </Label>
+          <Textarea
+            placeholder="Any specific requests or additional dimensions..."
+            value={customNote}
+            onChange={(e) => setCustomNote(e.target.value)}
+            className="min-h-[80px]"
+          />
+        </div>
+
         <ProductPrice product={product} variant={selectedVariant} />
 
         <Button
@@ -181,7 +281,8 @@ export default function ProductActions({
             !selectedVariant ||
             !!disabled ||
             isAdding ||
-            !isValidVariant
+            !isValidVariant ||
+            !isMeasurementsValid
           }
           variant="primary"
           className="w-full h-10"
@@ -192,6 +293,8 @@ export default function ProductActions({
             ? "Select variant"
             : !inStock || !isValidVariant
             ? "Out of stock"
+            : !isMeasurementsValid
+            ? "Complete measurements"
             : "Add to cart"}
         </Button>
 

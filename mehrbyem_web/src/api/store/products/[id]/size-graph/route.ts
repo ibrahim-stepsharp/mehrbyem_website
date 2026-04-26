@@ -13,7 +13,8 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
         sg.id,
         sg.name,
         sg.image,
-        sg.description
+        sg.description,
+        sg.parameters
       from "product" p
       join "product_variant" pv
         on pv.product_id = p.id

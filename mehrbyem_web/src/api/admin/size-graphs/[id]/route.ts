@@ -47,6 +47,10 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
     updateData.description = description || null
   }
 
+  if (payload.parameters !== undefined) {
+    updateData.parameters = payload.parameters
+  }
+
   const size_graph = await sizeGraphModuleService.updateSizeGraphs(
     updateData as any
   )

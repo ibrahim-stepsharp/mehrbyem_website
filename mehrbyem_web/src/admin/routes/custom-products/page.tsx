@@ -1,5 +1,5 @@
 import { defineRouteConfig } from "@medusajs/admin-sdk"
-import { ShoppingBag, XMarkMini } from "@medusajs/icons"
+import { ShoppingBag, XMarkMini, Plus, Trash } from "@medusajs/icons"
 import {
   Badge,
   Button,
@@ -20,7 +20,13 @@ import { useNavigate } from "react-router-dom"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type SizeGraph = { id: string; name: string; image: string; description: string | null }
+type SizeGraphTableData = {
+  title: string
+  columns: string[]
+  rows: Record<string, string>[]
+}
+
+type SizeGraph = { id: string; name: string; image: string; description: string | null; parameters?: SizeGraphTableData[] }
 type ProductType = { id: string; value: string }
 type Collection = { id: string; title: string }
 type Category = { id: string; name: string }
@@ -55,6 +61,11 @@ const uploadFile = async (file: File) => {
   if (!url) throw new Error("Upload failed: missing URL")
   return String(url)
 }
+
+const slugify = (str: string) => 
+  str.toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
 
 // ─── Section wrapper ──────────────────────────────────────────────────────────
 
@@ -192,6 +203,40 @@ const CustomProductPage = () => {
   const [sgName, setSgName] = useState("")
   const [sgDescription, setSgDescription] = useState("")
   const [sgImageFile, setSgImageFile] = useState<File | null>(null)
+  const [sgTables, setSgTables] = useState<SizeGraphTableData[]>([
+    { title: "Standard Sizes", columns: ["Size", "Shoulder", "Bust", "Hip", "Length"], rows: [{}] }
+  ])
+
+  const addSgTable = () => setSgTables([...sgTables, { title: "New Section", columns: ["Size"], rows: [{}] }])
+  const removeSgTable = (i: number) => setSgTables(sgTables.filter((_, idx) => idx !== i))
+  const addSgColumn = (tIdx: number) => {
+    const nt = [...sgTables]; nt[tIdx].columns.push("New Column"); setSgTables(nt)
+  }
+  const removeSgColumn = (tIdx: number, cIdx: number) => {
+    const nt = [...sgTables]; 
+    const colName = nt[tIdx].columns[cIdx]
+    nt[tIdx].columns.splice(cIdx, 1); 
+    nt[tIdx].rows = nt[tIdx].rows.map(r => {
+      const nr = { ...r }; delete nr[colName]; return nr
+    })
+    setSgTables(nt)
+  }
+  const addSgRow = (tIdx: number) => {
+    const nt = [...sgTables]; nt[tIdx].rows.push({}); setSgTables(nt)
+  }
+  const removeSgRow = (tIdx: number, rIdx: number) => {
+    const nt = [...sgTables]; nt[tIdx].rows.splice(rIdx, 1); setSgTables(nt)
+  }
+  const updateSgCell = (tIdx: number, rIdx: number, col: string, val: string) => {
+    const nt = [...sgTables]; nt[tIdx].rows[rIdx][col] = val; setSgTables(nt)
+  }
+  const updateSgColumnName = (tIdx: number, cIdx: number, name: string) => {
+    const nt = [...sgTables]; const old = nt[tIdx].columns[cIdx]; nt[tIdx].columns[cIdx] = name
+    nt[tIdx].rows = nt[tIdx].rows.map(r => {
+      const nr = { ...r }; if (nr[old]) { nr[name] = nr[old]; delete nr[old] }; return nr
+    })
+    setSgTables(nt)
+  }
 
   // ── Fetch reference data ──
   const { data: sizeGraphsData } = useQuery({
@@ -297,11 +342,18 @@ const CustomProductPage = () => {
   // ── Create size graph ──
   const { mutate: createSizeGraph, isPending: isCreatingSg } = useMutation({
     mutationFn: async () => {
-      if (!sgImageFile) throw new Error("Image is required")
-      const imageUrl = await uploadFile(sgImageFile)
+      let imageUrl = ""
+      if (sgImageFile) {
+        imageUrl = await uploadFile(sgImageFile)
+      }
       return adminFetch("/size-graphs", {
         method: "POST",
-        body: JSON.stringify({ name: sgName.trim(), image: imageUrl, description: sgDescription.trim() }),
+        body: JSON.stringify({ 
+          name: sgName.trim(), 
+          image: imageUrl, 
+          description: sgDescription.trim(),
+          parameters: sgTables
+        }),
       })
     },
     onSuccess: (data) => {
@@ -311,6 +363,7 @@ const CustomProductPage = () => {
       setSgName("")
       setSgDescription("")
       setSgImageFile(null)
+      setSgTables([{ title: "Standard Sizes", columns: ["Size", "Shoulder", "Bust", "Hip", "Length"], rows: [{}] }])
       toast.success("Size graph created")
     },
     onError: (e: any) => toast.error("Failed: " + e.message),
@@ -747,34 +800,141 @@ const CustomProductPage = () => {
           <FocusModal.Header>
             <Heading level="h2">Create New Size Graph</Heading>
           </FocusModal.Header>
-          <FocusModal.Body className="flex flex-col items-center py-10">
+          <FocusModal.Body className="flex flex-col items-center py-10 overflow-y-auto">
             <form
               onSubmit={(e) => { e.preventDefault(); createSizeGraph() }}
-              className="w-full max-w-xl flex flex-col gap-y-5"
+              className="w-full max-w-4xl flex flex-col gap-y-8"
             >
-              <Field label="Name" required>
-                <Input id="sg-name" value={sgName} onChange={(e) => setSgName(e.target.value)} required />
-              </Field>
-              <Field label="Size Chart Image" required>
-                <Input
-                  id="sg-image"
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setSgImageFile(e.target.files?.[0] ?? null)}
-                  required
-                />
-              </Field>
-              <Field label="Description">
-                <Textarea
-                  id="sg-description"
-                  value={sgDescription}
-                  onChange={(e) => setSgDescription(e.target.value)}
-                  rows={3}
-                />
-              </Field>
-              <div className="flex items-center justify-end gap-x-2 pt-2">
-                <Button type="button" variant="secondary" onClick={() => setSgModalOpen(false)}>Cancel</Button>
-                <Button type="submit" isLoading={isCreatingSg}>Create Size Graph</Button>
+              {/* Basic Info */}
+              <div className="grid grid-cols-2 gap-x-6">
+                <div className="flex flex-col gap-y-4">
+                  <Field label="Name" required>
+                    <Input id="sg-name" value={sgName} onChange={(e) => setSgName(e.target.value)} required />
+                  </Field>
+                  <Field label="Description">
+                    <Textarea id="sg-description" value={sgDescription} onChange={(e) => setSgDescription(e.target.value)} rows={3} />
+                  </Field>
+                </div>
+                <Field label="Header Image (Optional)">
+                  <Input type="file" accept="image/*" onChange={(e) => setSgImageFile(e.target.files?.[0] ?? null)} />
+                  {sgImageFile && (
+                    <img
+                      src={URL.createObjectURL(sgImageFile)}
+                      className="h-32 w-full rounded border object-contain bg-ui-bg-subtle mt-2"
+                    />
+                  )}
+                </Field>
+              </div>
+
+              {/* Measurement Tables */}
+              <div className="border-t pt-6">
+                <div className="flex items-center justify-between mb-4">
+                  <Heading level="h2">Measurement Tables</Heading>
+                  <Button type="button" variant="secondary" size="small" onClick={addSgTable}>
+                    + Add Table Section
+                  </Button>
+                </div>
+
+                <div className="flex flex-col gap-y-10">
+                  {sgTables.map((table, tIdx) => (
+                    <div key={tIdx} className="border rounded-lg p-6 bg-ui-bg-subtle/50 relative">
+                      <button 
+                        type="button"
+                        className="absolute top-2 right-2 text-rose-500 hover:bg-rose-50 p-1 rounded transition-colors"
+                        onClick={() => removeSgTable(tIdx)}
+                      >
+                        <XMarkMini />
+                      </button>
+
+                      <div className="flex flex-col gap-y-4">
+                        <div className="flex flex-col gap-y-2 max-w-sm text-left">
+                          <Label className="text-xs uppercase font-bold text-ui-fg-muted">Section Title</Label>
+                          <Input 
+                            value={table.title} 
+                            onChange={(e) => {
+                              const nt = [...sgTables]; nt[tIdx].title = e.target.value; setSgTables(nt)
+                            }}
+                          />
+                        </div>
+
+                        <div className="overflow-x-auto border rounded-md bg-ui-bg-base">
+                          <table className="w-full border-collapse">
+                            <thead>
+                              <tr className="border-b bg-ui-bg-subtle text-left">
+                                {table.columns.map((col, cIdx) => (
+                                  <th key={cIdx} className="p-2 border-r last:border-r-0 min-w-[120px]">
+                                    <div className="flex items-center gap-x-1">
+                                      <input 
+                                        className="bg-transparent border-none text-xs font-bold w-full focus:outline-none"
+                                        value={col}
+                                        onChange={(e) => updateSgColumnName(tIdx, cIdx, e.target.value)}
+                                      />
+                                      <button 
+                                        type="button"
+                                        onClick={() => removeSgColumn(tIdx, cIdx)}
+                                        className="text-rose-500"
+                                      >
+                                        <XMarkMini className="h-3 w-3" />
+                                      </button>
+                                    </div>
+                                  </th>
+                                ))}
+                                <th className="p-2 w-10 text-center">
+                                  <button type="button" onClick={() => addSgColumn(tIdx)} className="text-ui-fg-interactive">
+                                    +
+                                  </button>
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {table.rows.map((row, rIdx) => (
+                                <tr key={rIdx} className="border-b last:border-b-0">
+                                  {table.columns.map((col, cIdx) => (
+                                    <td key={cIdx} className="p-1 border-r last:border-r-0">
+                                      <input 
+                                        className="w-full p-1 text-sm bg-transparent border-none focus:ring-1 focus:ring-ui-border-interactive rounded transition-all"
+                                        value={row[col] || ""}
+                                        onChange={(e) => updateSgCell(tIdx, rIdx, col, e.target.value)}
+                                        placeholder="..."
+                                      />
+                                    </td>
+                                  ))}
+                                  <td className="p-1 text-center">
+                                    <button 
+                                      type="button"
+                                      onClick={() => removeSgRow(tIdx, rIdx)}
+                                      className="text-rose-500"
+                                    >
+                                      <XMarkMini className="h-4 w-4" />
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                          <Button 
+                            type="button" 
+                            variant="secondary" 
+                            size="small" 
+                            className="w-full rounded-none border-none border-t border-ui-border-base"
+                            onClick={() => addSgRow(tIdx)}
+                          >
+                            + Add Row
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-x-2 pt-6 border-t">
+                <Button type="button" variant="secondary" onClick={() => setSgModalOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" isLoading={isCreatingSg}>
+                  Create Size Graph
+                </Button>
               </div>
             </form>
           </FocusModal.Body>
