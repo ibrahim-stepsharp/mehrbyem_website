@@ -25,6 +25,7 @@ Stores the library of reusable size charts.
 | `name` | `text` | Internal name of the size chart |
 | `image` | `text` | URL to the hosted image |
 | `description` | `text` | Optional description or notes |
+| `parameters` | `json` | Schema-driven customization rules (buttons, sliders, etc.) |
 | `created_at` | `timestamptz` | Creation timestamp |
 | `updated_at` | `timestamptz` | Last update timestamp |
 | `deleted_at` | `timestamptz` | Soft delete timestamp |

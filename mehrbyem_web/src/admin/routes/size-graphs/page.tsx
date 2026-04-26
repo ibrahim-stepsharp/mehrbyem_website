@@ -12,8 +12,6 @@ import {
   Text,
   Textarea,
   DropdownMenu,
-  Select,
-  Checkbox,
   clx,
 } from "@medusajs/ui"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
@@ -25,27 +23,12 @@ type SizeGraphTableData = {
   rows: Record<string, string>[]
 }
 
-type MetadataRule = {
-  name: string
-  type: "buttons" | "slider" | "input"
-  options?: any[]
-  min?: number
-  max?: number
-  step?: number
-  optional?: boolean
-}
-
-type SizeGraphParameters = {
-  tables: SizeGraphTableData[]
-  metadata_rules: MetadataRule[]
-}
-
 type SizeGraph = {
   id: string
   name: string
   image: string
   description: string | null
-  parameters?: SizeGraphParameters
+  parameters?: SizeGraphTableData[]
 }
 
 const adminFetch = async (path: string, options: RequestInit = {}) => {
@@ -99,9 +82,6 @@ const SizeGraphsPage = () => {
     { title: "Standard Sizes", columns: ["Size", "Shoulder", "Bust", "Hip", "Length"], rows: [{}] }
   ])
 
-  // Metadata rules state
-  const [metadataRules, setMetadataRules] = useState<MetadataRule[]>([])
-
   const { data, isLoading } = useQuery({
     queryKey: ["admin_size_graphs"],
     queryFn: () => adminFetch("/size-graphs?limit=100&offset=0"),
@@ -123,10 +103,7 @@ const SizeGraphsPage = () => {
         name: name.trim(),
         image: resolvedImage || "",
         description: description.trim(),
-        parameters: {
-          tables,
-          metadata_rules: metadataRules
-        },
+        parameters: tables,
       }
 
       if (editingId) {
@@ -162,7 +139,6 @@ const SizeGraphsPage = () => {
     setDescription("")
     setImageFile(null)
     setTables([{ title: "Standard Sizes", columns: ["Size", "Shoulder", "Bust", "Hip", "Length"], rows: [{}] }])
-    setMetadataRules([])
     setIsModalOpen(false)
   }
 
@@ -173,12 +149,14 @@ const SizeGraphsPage = () => {
     setDescription(sizeGraph.description ?? "")
     setImageFile(null)
     
-    if (sizeGraph.parameters && typeof sizeGraph.parameters === "object") {
-      setTables(sizeGraph.parameters.tables || [])
-      setMetadataRules(sizeGraph.parameters.metadata_rules || [])
+    // Support both structures for backward compatibility during transition
+    const params = sizeGraph.parameters
+    if (Array.isArray(params)) {
+      setTables(params)
+    } else if (params && (params as any).tables) {
+      setTables((params as any).tables)
     } else {
       setTables([{ title: "Standard Sizes", columns: ["Size", "Shoulder", "Bust", "Hip", "Length"], rows: [{}] }])
-      setMetadataRules([])
     }
     setIsModalOpen(true)
   }
@@ -242,20 +220,6 @@ const SizeGraphsPage = () => {
     setTables(newTables)
   }
 
-  const addMetadataRule = () => {
-    setMetadataRules([...metadataRules, { name: "Length adjustment", type: "slider", min: -2, max: 2, step: 0.5, optional: true }])
-  }
-
-  const removeMetadataRule = (index: number) => {
-    setMetadataRules(metadataRules.filter((_, i) => i !== index))
-  }
-
-  const updateMetadataRule = (index: number, update: Partial<MetadataRule>) => {
-    const newRules = [...metadataRules]
-    newRules[index] = { ...newRules[index], ...update }
-    setMetadataRules(newRules)
-  }
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     saveSizeGraph()
@@ -263,11 +227,11 @@ const SizeGraphsPage = () => {
 
   return (
     <Container className="divide-y p-0">
-      <div className="flex items-center justify-between px-6 py-4">
+      <div className="flex items-center justify-between px-6 py-4 text-left">
         <div>
           <Heading level="h1">Size Graphs</Heading>
           <Text className="text-ui-fg-subtle mt-1">
-            Create reusable size charts with measurement tables and adjustment rules.
+            Create reusable size charts with measurement tables.
           </Text>
         </div>
         <Button
@@ -293,7 +257,7 @@ const SizeGraphsPage = () => {
                 <Table.HeaderCell>Name</Table.HeaderCell>
                 <Table.HeaderCell>ID</Table.HeaderCell>
                 <Table.HeaderCell>Image</Table.HeaderCell>
-                <Table.HeaderCell>Setup</Table.HeaderCell>
+                <Table.HeaderCell>Sections</Table.HeaderCell>
                 <Table.HeaderCell></Table.HeaderCell>
               </Table.Row>
             </Table.Header>
@@ -319,16 +283,20 @@ const SizeGraphsPage = () => {
                   </Table.Cell>
                   <Table.Cell>
                     <div className="flex flex-wrap gap-1">
-                      {sizeGraph.parameters?.tables?.map((t, i) => (
-                        <span key={i} className="text-[10px] bg-ui-bg-subtle px-1.5 py-0.5 rounded border uppercase font-bold text-ui-fg-muted">
-                          {t.title}
-                        </span>
-                      ))}
-                      {sizeGraph.parameters?.metadata_rules?.map((r, i) => (
-                        <span key={i} className="text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-200 uppercase font-bold">
-                          {r.name}
-                        </span>
-                      ))}
+                      {(() => {
+                        const params = sizeGraph.parameters
+                        const tables = Array.isArray(params) 
+                          ? params 
+                          : (params as any)?.tables || []
+                        
+                        if (tables.length === 0) return "-"
+                        
+                        return tables.map((t: any, i: number) => (
+                          <span key={i} className="text-[10px] bg-ui-bg-subtle px-1.5 py-0.5 rounded border uppercase font-bold text-ui-fg-muted">
+                            {t.title}
+                          </span>
+                        ))
+                      })()}
                     </div>
                   </Table.Cell>
                   <Table.Cell className="text-right">
@@ -369,7 +337,7 @@ const SizeGraphsPage = () => {
             <form onSubmit={handleSubmit} className="flex w-full max-w-4xl flex-col gap-y-8">
               {/* Basic Info */}
               <div className="grid grid-cols-2 gap-x-6">
-                <div className="flex flex-col gap-y-4">
+                <div className="flex flex-col gap-y-4 text-left">
                   <div className="flex flex-col gap-y-2">
                     <Label htmlFor="size-graph-name">Graph Name</Label>
                     <Input
@@ -381,7 +349,7 @@ const SizeGraphsPage = () => {
                     />
                   </div>
                   <div className="flex flex-col gap-y-2">
-                    <Label htmlFor="size-graph-description">Internal Notes</Label>
+                    <Label htmlFor="size-graph-description">Description</Label>
                     <Textarea
                       id="size-graph-description"
                       value={description}
@@ -391,7 +359,7 @@ const SizeGraphsPage = () => {
                   </div>
                 </div>
                 
-                <div className="flex flex-col gap-y-2">
+                <div className="flex flex-col gap-y-2 text-left">
                   <Label>Header Image (Optional)</Label>
                   <Input
                     type="file"
@@ -410,26 +378,26 @@ const SizeGraphsPage = () => {
               {/* Measurement Tables */}
               <div className="border-t pt-6">
                 <div className="flex items-center justify-between mb-4">
-                  <Heading level="h2">Measurement Tables (Static Charts)</Heading>
+                  <Heading level="h2">Measurement Tables</Heading>
                   <Button type="button" variant="secondary" size="small" onClick={addTable}>
-                    <Plus /> Add Table Section
+                    <Plus /> Add Section
                   </Button>
                 </div>
 
                 <div className="flex flex-col gap-y-10">
                   {tables.map((table, tIdx) => (
-                    <div key={tIdx} className="border rounded-lg p-6 bg-ui-bg-subtle/50 relative">
+                    <div key={tIdx} className="border rounded-lg p-6 bg-ui-bg-subtle/50 relative shadow-sm bg-ui-bg-base">
                       <IconButton 
                         variant="transparent" 
                         className="absolute top-2 right-2 text-ui-fg-error"
                         onClick={() => removeTable(tIdx)}
                       >
-                        <Trash />
+                        <Trash className="h-4 w-4" />
                       </IconButton>
 
                       <div className="flex flex-col gap-y-4">
-                        <div className="flex flex-col gap-y-2 max-w-sm">
-                          <Label>Section Title</Label>
+                        <div className="flex flex-col gap-y-2 max-w-sm text-left">
+                          <Label className="text-xs uppercase font-bold text-ui-fg-muted">Section Title</Label>
                           <Input 
                             value={table.title} 
                             onChange={(e) => {
@@ -441,7 +409,7 @@ const SizeGraphsPage = () => {
                         <div className="overflow-x-auto border rounded-md bg-ui-bg-base">
                           <table className="w-full border-collapse">
                             <thead>
-                              <tr className="border-b bg-ui-bg-subtle">
+                              <tr className="border-b bg-ui-bg-subtle text-left">
                                 {table.columns.map((col, cIdx) => (
                                   <th key={cIdx} className="p-2 border-r last:border-r-0 min-w-[120px]">
                                     <div className="flex items-center gap-x-1">
@@ -461,7 +429,7 @@ const SizeGraphsPage = () => {
                                     </div>
                                   </th>
                                 ))}
-                                <th className="p-2 w-10">
+                                <th className="p-2 w-10 text-center">
                                   <IconButton variant="transparent" size="small" onClick={() => addColumn(tIdx)}>
                                     <Plus className="h-4 w-4" />
                                   </IconButton>
@@ -470,11 +438,11 @@ const SizeGraphsPage = () => {
                             </thead>
                             <tbody>
                               {table.rows.map((row, rIdx) => (
-                                <tr key={rIdx} className="border-b last:border-b-0">
+                                <tr key={rIdx} className="border-b last:border-b-0 bg-ui-bg-base">
                                   {table.columns.map((col, cIdx) => (
                                     <td key={cIdx} className="p-1 border-r last:border-r-0">
                                       <input 
-                                        className="w-full p-1 text-sm bg-transparent border-none focus:ring-1 focus:ring-ui-border-interactive rounded"
+                                        className="w-full p-1 text-sm bg-transparent border-none focus:ring-1 focus:ring-ui-border-interactive rounded transition-all"
                                         value={row[col] || ""}
                                         onChange={(e) => updateCell(tIdx, rIdx, col, e.target.value)}
                                         placeholder="..."
@@ -499,96 +467,12 @@ const SizeGraphsPage = () => {
                             type="button" 
                             variant="secondary" 
                             size="small" 
-                            className="w-full rounded-none border-none"
+                            className="w-full rounded-none border-none border-t"
                             onClick={() => addRow(tIdx)}
                           >
-                            <Plus className="mr-2" /> Add Row
+                            <Plus className="mr-2 h-3 w-3" /> Add Row
                           </Button>
                         </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Adjustment Rules (Dynamic Metadata) */}
-              <div className="border-t pt-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <Heading level="h2">Adjustment Rules (Customer Inputs)</Heading>
-                    <Text className="text-ui-fg-subtle text-xs">Define Sliders or Buttons for custom adjustments (e.g. Sleeve length +2 inches).</Text>
-                  </div>
-                  <Button type="button" variant="secondary" size="small" onClick={addMetadataRule}>
-                    <Plus /> Add Adjustment
-                  </Button>
-                </div>
-
-                <div className="flex flex-col gap-y-4">
-                  {metadataRules.map((rule, rIdx) => (
-                    <div key={rIdx} className="border rounded-lg p-4 bg-ui-bg-subtle/30 relative grid grid-cols-12 gap-x-4 items-end">
-                      <button 
-                        type="button"
-                        className="absolute top-1 right-1 text-ui-fg-error"
-                        onClick={() => removeMetadataRule(rIdx)}
-                      >
-                        <XMarkMini />
-                      </button>
-
-                      <div className="col-span-3 flex flex-col gap-y-1.5">
-                        <Label>Label</Label>
-                        <Input value={rule.name} onChange={(e) => updateMetadataRule(rIdx, { name: e.target.value })} placeholder="e.g. Length Adjustment" />
-                      </div>
-
-                      <div className="col-span-2 flex flex-col gap-y-1.5">
-                        <Label>Type</Label>
-                        <Select value={rule.type} onValueChange={(v: any) => updateMetadataRule(rIdx, { type: v })}>
-                          <Select.Trigger><Select.Value /></Select.Trigger>
-                          <Select.Content>
-                            <Select.Item value="buttons">Buttons</Select.Item>
-                            <Select.Item value="slider">Slider</Select.Item>
-                            <Select.Item value="input">Text</Select.Item>
-                          </Select.Content>
-                        </Select>
-                      </div>
-
-                      {rule.type === "buttons" && (
-                        <div className="col-span-5 flex flex-col gap-y-1.5">
-                          <Label>Options (comma separated)</Label>
-                          <Input 
-                            value={rule.options?.join(", ")} 
-                            onChange={(e) => updateMetadataRule(rIdx, { options: e.target.value.split(",").map(s => s.trim()) })} 
-                            placeholder="e.g. Standard, +1 inch, +2 inches"
-                          />
-                        </div>
-                      )}
-
-                      {rule.type === "slider" && (
-                        <>
-                          <div className="col-span-2 flex flex-col gap-y-1.5">
-                            <Label>Min</Label>
-                            <Input type="number" value={rule.min} onChange={(e) => updateMetadataRule(rIdx, { min: Number(e.target.value) })} />
-                          </div>
-                          <div className="col-span-2 flex flex-col gap-y-1.5">
-                            <Label>Max</Label>
-                            <Input type="number" value={rule.max} onChange={(e) => updateMetadataRule(rIdx, { max: Number(e.target.value) })} />
-                          </div>
-                          <div className="col-span-1 flex flex-col gap-y-1.5">
-                            <Label>Step</Label>
-                            <Input type="number" value={rule.step} onChange={(e) => updateMetadataRule(rIdx, { step: Number(e.target.value) })} />
-                          </div>
-                        </>
-                      )}
-
-                      {rule.type === "input" && (
-                        <div className="col-span-5 flex flex-col gap-y-1.5 opacity-50 cursor-not-allowed">
-                          <Label>Text Field</Label>
-                          <Input disabled placeholder="Customer will see a free-text box" />
-                        </div>
-                      )}
-
-                      <div className="col-span-2 flex items-center gap-x-2 pt-2 self-center">
-                        <Checkbox checked={rule.optional} onCheckedChange={(v) => updateMetadataRule(rIdx, { optional: !!v })} />
-                        <Label>Optional</Label>
                       </div>
                     </div>
                   ))}

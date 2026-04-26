@@ -97,9 +97,9 @@ export default function ProductActions({
       return true
     }
 
-    return sizeGraph.parameters.every((p: any) => {
-      if (p.optional) return true
-      return measurements[p.name] !== undefined && measurements[p.name] !== ""
+    return sizeGraph.parameters.every((table: any, idx: number) => {
+      const title = table.title || `Size Table ${idx + 1}`
+      return measurements[title] !== undefined
     })
   }, [sizeGraph, measurements])
 
@@ -154,10 +154,18 @@ export default function ProductActions({
 
     setIsAdding(true)
 
-    const metadata = {
-      ...measurements,
+    const metadata: Record<string, any> = {
       custom_note: customNote,
     }
+
+    // Flatten all selected row properties into metadata
+    Object.values(measurements).forEach((rowObject) => {
+      Object.entries(rowObject).forEach(([key, value]) => {
+        const normalizedKey =
+          key.toLowerCase() === "size" ? "selected_size" : key.toLowerCase()
+        metadata[normalizedKey] = value
+      })
+    })
 
     await addToCart({
       variantId: selectedVariant.id,
@@ -200,62 +208,58 @@ export default function ProductActions({
 
         {sizeGraph?.parameters && sizeGraph.parameters.length > 0 && (
           <div className="flex flex-col gap-y-4 mb-4">
-            <Text className="text-ui-fg-base text-small-semi uppercase">
-              Custom Measurements
-            </Text>
-            {sizeGraph.parameters.map((param: any) => (
-              <div key={param.name} className="flex flex-col gap-y-2">
-                <Label className="text-ui-fg-subtle text-xsmall-regular">
-                  {param.name} {param.optional ? "(Optional)" : "*"}
-                </Label>
-                
-                {param.type === "buttons" && (
+            {sizeGraph.parameters.map((table: any, tableIdx: number) => {
+              const title = table.title || `Size Table ${tableIdx + 1}`
+              const columns = table.columns || []
+              const rows = table.rows || []
+              const firstColumn = columns[0]
+              const selectedRow = measurements[title]
+
+              return (
+                <div key={title} className="flex flex-col gap-y-4">
+                  <Text className="text-ui-fg-base text-small-semi uppercase">
+                    {title}
+                  </Text>
+
+                  {/* Buttons for first column */}
                   <div className="flex flex-wrap gap-2">
-                    {param.options.map((option: any) => (
+                    {rows.map((row: any, rowIdx: number) => (
                       <button
-                        key={option}
-                        onClick={() => setMeasurementValue(param.name, option)}
+                        key={rowIdx}
+                        onClick={() => setMeasurementValue(title, row)}
                         className={clx(
-                          "flex-1 min-w-[50px] h-10 border rounded-md text-small-regular transition-all",
-                          measurements[param.name] === option
-                            ? "bg-ui-bg-base border-ui-border-interactive text-ui-fg-base"
+                          "flex-1 min-w-[60px] h-10 border rounded-md text-small-regular transition-all",
+                          selectedRow === row
+                            ? "bg-ui-bg-base border-ui-border-interactive text-ui-fg-base shadow-sm"
                             : "bg-ui-bg-subtle border-ui-border-base text-ui-fg-subtle hover:border-ui-border-strong"
                         )}
                       >
-                        {option}
+                        {row[firstColumn]}
                       </button>
                     ))}
                   </div>
-                )}
 
-                {param.type === "slider" && (
-                  <div className="flex flex-col gap-y-2">
-                    <input
-                      type="range"
-                      min={param.min}
-                      max={param.max}
-                      step={param.step || 1}
-                      value={measurements[param.name] || param.min}
-                      onChange={(e) => setMeasurementValue(param.name, e.target.value)}
-                      className="w-full h-1.5 bg-ui-bg-subtle rounded-lg appearance-none cursor-pointer accent-ui-fg-interactive"
-                    />
-                    <div className="flex justify-between text-xsmall-regular text-ui-fg-muted">
-                      <span>{param.min}</span>
-                      <span className="text-ui-fg-base font-medium">{measurements[param.name] || param.min}</span>
-                      <span>{param.max}</span>
+                  {/* Measurement Preview */}
+                  {selectedRow && (
+                    <div className="grid grid-cols-2 gap-2 p-3 bg-ui-bg-subtle rounded-lg border border-ui-border-base">
+                      {columns.slice(1).map((col: string) => (
+                        <div
+                          key={col}
+                          className="flex justify-between items-center px-2"
+                        >
+                          <Text className="text-ui-fg-subtle text-xsmall-regular capitalize">
+                            {col}:
+                          </Text>
+                          <Text className="text-ui-fg-base text-xsmall-semi">
+                            {selectedRow[col]}
+                          </Text>
+                        </div>
+                      ))}
                     </div>
-                  </div>
-                )}
-
-                {param.type === "input" && (
-                  <Input
-                    placeholder={`Enter ${param.name.toLowerCase()}...`}
-                    value={measurements[param.name] || ""}
-                    onChange={(e) => setMeasurementValue(param.name, e.target.value)}
-                  />
-                )}
-              </div>
-            ))}
+                  )}
+                </div>
+              )
+            })}
             <Divider />
           </div>
         )}
@@ -328,6 +332,7 @@ export default function ProductActions({
           isAdding={isAdding}
           show={!inView}
           optionsDisabled={!!disabled || isAdding}
+          isMeasurementsValid={isMeasurementsValid}
         />
       </div>
     </>

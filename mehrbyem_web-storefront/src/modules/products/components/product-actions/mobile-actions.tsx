@@ -21,6 +21,7 @@ type MobileActionsProps = {
   isAdding?: boolean
   show: boolean
   optionsDisabled: boolean
+  isMeasurementsValid?: boolean
 }
 
 const MobileActions: React.FC<MobileActionsProps> = ({
@@ -33,6 +34,7 @@ const MobileActions: React.FC<MobileActionsProps> = ({
   isAdding,
   show,
   optionsDisabled,
+  isMeasurementsValid = true,
 }) => {
   const { state, open, close } = useToggleState()
 
@@ -73,14 +75,14 @@ const MobileActions: React.FC<MobileActionsProps> = ({
             className="bg-white flex flex-col gap-y-3 justify-center items-center text-large-regular p-4 h-full w-full border-t border-gray-200"
             data-testid="mobile-actions"
           >
-            <div className="flex items-center gap-x-2">
-              <span data-testid="mobile-title">{product.title}</span>
+            <div className="flex items-center gap-x-2 text-small-regular">
+              <span data-testid="mobile-title" className="font-semibold">{product.title}</span>
               <span>—</span>
               {selectedPrice ? (
                 <div className="flex items-end gap-x-2 text-ui-fg-base">
                   {selectedPrice.price_type === "sale" && (
                     <p>
-                      <span className="line-through text-small-regular">
+                      <span className="line-through text-xsmall-regular">
                         {selectedPrice.original_price}
                       </span>
                     </p>
@@ -104,11 +106,11 @@ const MobileActions: React.FC<MobileActionsProps> = ({
               {!isSimple && <Button
                 onClick={open}
                 variant="secondary"
-                className="w-full"
+                className="w-full h-10"
                 data-testid="mobile-actions-button"
               >
                 <div className="flex items-center justify-between w-full">
-                  <span>
+                  <span className="truncate">
                     {variant
                       ? Object.values(options).join(" / ")
                       : "Select Options"}
@@ -118,8 +120,8 @@ const MobileActions: React.FC<MobileActionsProps> = ({
               </Button>}
               <Button
                 onClick={handleAddToCart}
-                disabled={!inStock || !variant}
-                className="w-full"
+                disabled={!inStock || !variant || !isMeasurementsValid}
+                className="w-full h-10"
                 isLoading={isAdding}
                 data-testid="mobile-cart-button"
               >
@@ -127,6 +129,8 @@ const MobileActions: React.FC<MobileActionsProps> = ({
                   ? "Select variant"
                   : !inStock
                   ? "Out of stock"
+                  : !isMeasurementsValid
+                  ? "Select size"
                   : "Add to cart"}
               </Button>
             </div>

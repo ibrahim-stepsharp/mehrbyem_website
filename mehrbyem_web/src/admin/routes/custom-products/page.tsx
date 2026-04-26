@@ -13,6 +13,7 @@ import {
   Textarea,
   Select,
   toast,
+  IconButton,
 } from "@medusajs/ui"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import React, { useMemo, useState } from "react"
@@ -74,7 +75,7 @@ const Section: React.FC<{ title: string; subtitle?: string; children: React.Reac
   subtitle,
   children,
 }) => (
-  <div className="border border-ui-border-base rounded-lg p-6 flex flex-col gap-y-4">
+  <div className="border border-ui-border-base rounded-lg p-6 flex flex-col gap-y-4 text-left bg-ui-bg-base shadow-sm">
     <div>
       <Heading level="h2">{title}</Heading>
       {subtitle && <Text className="text-ui-fg-subtle text-sm mt-0.5">{subtitle}</Text>}
@@ -89,11 +90,11 @@ const Field: React.FC<{ label: string; hint?: string; required?: boolean; childr
   required,
   children,
 }) => (
-  <div className="flex flex-col gap-y-1.5">
-    <Label>
+  <div className="flex flex-col gap-y-1.5 text-left">
+    <Label className="text-ui-fg-base text-xs font-bold uppercase tracking-tight">
       {label}
       {required && <span className="text-rose-500 ml-1">*</span>}
-      {!required && <span className="text-ui-fg-muted text-xs ml-1">(Optional)</span>}
+      {!required && <span className="text-ui-fg-muted text-[10px] ml-1 lowercase font-normal">(Optional)</span>}
     </Label>
     {children}
     {hint && <Text className="text-ui-fg-subtle text-xs">{hint}</Text>}
@@ -113,7 +114,7 @@ const MultiSelect: React.FC<{
 
   return (
     <div className="flex flex-col gap-y-2">
-      <div className="flex flex-wrap gap-2 min-h-[40px] border border-ui-border-base rounded-md px-2 py-1.5">
+      <div className="flex flex-wrap gap-2 min-h-[40px] border border-ui-border-base rounded-md px-2 py-1.5 bg-ui-bg-field">
         {selected.length === 0 && (
           <Text className="text-ui-fg-muted text-sm self-center">{placeholder}</Text>
         )}
@@ -292,12 +293,16 @@ const CustomProductPage = () => {
         }
       }
 
+      const finalHandle = handle.trim() 
+        ? slugify(handle.trim()) 
+        : (slugify(title.trim()) + '-' + Math.random().toString(36).substring(2, 8))
+
       return adminFetch("/custom/products-with-size", {
         method: "POST",
         body: JSON.stringify({
           title: title.trim(),
           subtitle: subtitle.trim() || undefined,
-          handle: handle.trim() || (title.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Math.random().toString(36).substring(2, 8)),
+          handle: finalHandle,
           description: description.trim() || undefined,
           status,
           discountable,
@@ -335,7 +340,7 @@ const CustomProductPage = () => {
       navigate(`/products/${data.product.id}`)
     },
     onError: (e: any) => {
-      toast.error("Failed to create product: " + e.message)
+      toast.error("Failed: " + e.message)
     },
   })
 
@@ -395,10 +400,10 @@ const CustomProductPage = () => {
     <div className="flex flex-col gap-y-4 max-w-6xl mx-auto px-6 py-8">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
+        <div className="text-left">
           <Heading level="h1">Create Custom Product</Heading>
           <Text className="text-ui-fg-subtle mt-1">
-            A single default variant will be created automatically. Variants are managed internally.
+            A single default variant will be created automatically.
           </Text>
         </div>
         <div className="flex items-center gap-x-2">
@@ -433,7 +438,7 @@ const CustomProductPage = () => {
                 placeholder="e.g. Hand-stitched premium fabric"
               />
             </Field>
-            <Field label="Handle" hint="Auto-generated from title if left empty. Used as the URL slug.">
+            <Field label="Handle" hint="Used as the URL slug. Will be cleaned automatically.">
               <Input
                 id="product-handle"
                 value={handle}
@@ -456,7 +461,7 @@ const CustomProductPage = () => {
                 checked={discountable}
                 onCheckedChange={(v) => setDiscountable(Boolean(v))}
               />
-              <div>
+              <div className="text-left">
                 <Label htmlFor="product-discountable">Discountable</Label>
                 <Text className="text-ui-fg-subtle text-xs">When unchecked, discounts will not apply.</Text>
               </div>
@@ -475,7 +480,7 @@ const CustomProductPage = () => {
                   />
                   <button 
                     type="button" 
-                    className="absolute -top-2 -right-2 bg-white rounded-full p-1 border shadow"
+                    className="absolute -top-2 -right-2 bg-ui-bg-base rounded-full p-1 border shadow"
                     onClick={() => { setThumbnailPreview(""); setThumbnailFile(null) }}
                   >
                     <XMarkMini />
@@ -504,7 +509,7 @@ const CustomProductPage = () => {
                       />
                       <button 
                         type="button" 
-                        className="absolute -top-2 -right-2 bg-white rounded-full p-1 border shadow"
+                        className="absolute -top-2 -right-2 bg-ui-bg-base rounded-full p-1 border shadow"
                         onClick={() => removeImage(img.id)}
                       >
                         <XMarkMini />
@@ -556,105 +561,44 @@ const CustomProductPage = () => {
           </Section>
 
           {/* Inventory */}
-          <Section title="Inventory" subtitle="These fields are applied to the hidden default variant.">
+          <Section title="Inventory" subtitle="Applied to the single default variant.">
             <div className="grid grid-cols-2 gap-4">
               <Field label="SKU">
-                <Input
-                  id="product-sku"
-                  value={sku}
-                  onChange={(e) => setSku(e.target.value)}
-                  placeholder="e.g. KURTA-001"
-                />
+                <Input id="product-sku" value={sku} onChange={(e) => setSku(e.target.value)} placeholder="KURTA-001" />
               </Field>
               <Field label="Barcode">
-                <Input
-                  id="product-barcode"
-                  value={barcode}
-                  onChange={(e) => setBarcode(e.target.value)}
-                  placeholder="e.g. 1234567890123"
-                />
-              </Field>
-              <Field label="EAN">
-                <Input
-                  id="product-ean"
-                  value={ean}
-                  onChange={(e) => setEan(e.target.value)}
-                  placeholder="European Article Number"
-                />
-              </Field>
-              <Field label="UPC">
-                <Input
-                  id="product-upc"
-                  value={upc}
-                  onChange={(e) => setUpc(e.target.value)}
-                  placeholder="Universal Product Code"
-                />
+                <Input id="product-barcode" value={barcode} onChange={(e) => setBarcode(e.target.value)} placeholder="123..." />
               </Field>
             </div>
             <div className="flex flex-col gap-y-3 pt-2">
               <div className="flex items-center justify-between border border-ui-border-base rounded-md px-4 py-3">
-                <div>
+                <div className="text-left">
                   <Label>Manage Inventory</Label>
                   <Text className="text-ui-fg-subtle text-xs">Track stock levels for this product.</Text>
                 </div>
-                <Switch
-                  id="manage-inventory"
-                  checked={manageInventory}
-                  onCheckedChange={setManageInventory}
-                />
+                <Switch checked={manageInventory} onCheckedChange={setManageInventory} />
               </div>
               <div className="flex items-center justify-between border border-ui-border-base rounded-md px-4 py-3">
-                <div>
+                <div className="text-left">
                   <Label>Allow Backorder</Label>
                   <Text className="text-ui-fg-subtle text-xs">Allow purchase even when out of stock.</Text>
                 </div>
-                <Switch
-                  id="allow-backorder"
-                  checked={allowBackorder}
-                  onCheckedChange={setAllowBackorder}
-                />
+                <Switch checked={allowBackorder} onCheckedChange={setAllowBackorder} />
               </div>
             </div>
-            <Field label="Initial Stock Quantity" hint="Sets stock at your default warehouse location.">
-              <Input
-                id="product-inventory-quantity"
-                type="number"
-                min="0"
-                value={inventoryQuantity}
-                onChange={(e) => setInventoryQuantity(e.target.value)}
-                placeholder="0"
-              />
+            <Field label="Initial Stock Quantity">
+              <Input type="number" min="0" value={inventoryQuantity} onChange={(e) => setInventoryQuantity(e.target.value)} placeholder="0" />
             </Field>
           </Section>
 
           {/* Shipping / Dimensions */}
-          <Section title="Shipping & Dimensions" subtitle="Used to calculate shipping costs.">
+          <Section title="Shipping & Dimensions">
             <div className="grid grid-cols-2 gap-4">
               <Field label="Weight (g)">
                 <Input id="product-weight" type="number" min="0" value={weight} onChange={(e) => setWeight(e.target.value)} placeholder="0" />
               </Field>
-              <Field label="Width (mm)">
-                <Input id="product-width" type="number" min="0" value={width} onChange={(e) => setWidth(e.target.value)} placeholder="0" />
-              </Field>
-              <Field label="Height (mm)">
-                <Input id="product-height" type="number" min="0" value={height} onChange={(e) => setHeight(e.target.value)} placeholder="0" />
-              </Field>
-              <Field label="Length (mm)">
-                <Input id="product-length" type="number" min="0" value={length} onChange={(e) => setLength(e.target.value)} placeholder="0" />
-              </Field>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
               <Field label="Material">
                 <Input id="product-material" value={material} onChange={(e) => setMaterial(e.target.value)} placeholder="e.g. Cotton" />
-              </Field>
-              <Field label="MID Code">
-                <Input id="product-mid" value={midCode} onChange={(e) => setMidCode(e.target.value)} placeholder="Manufacturer ID code" />
-              </Field>
-              <Field label="HS Code">
-                <Input id="product-hs" value={hsCode} onChange={(e) => setHsCode(e.target.value)} placeholder="Harmonized System code" />
-              </Field>
-              <Field label="Country of Origin">
-                <Input id="product-origin" value={originCountry} onChange={(e) => setOriginCountry(e.target.value)} placeholder="e.g. PK" />
               </Field>
             </div>
           </Section>
@@ -666,9 +610,7 @@ const CustomProductPage = () => {
           {/* Status */}
           <Section title="Status">
             <Select value={status} onValueChange={setStatus}>
-              <Select.Trigger>
-                <Select.Value />
-              </Select.Trigger>
+              <Select.Trigger><Select.Value /></Select.Trigger>
               <Select.Content>
                 <Select.Item value="published">Published</Select.Item>
                 <Select.Item value="draft">Draft</Select.Item>
@@ -677,12 +619,10 @@ const CustomProductPage = () => {
           </Section>
 
           {/* Size Graph */}
-          <Section title="Size Graph" subtitle="Each custom product must be linked to a size chart.">
+          <Section title="Size Graph" subtitle="Linked measurement chart.">
             <Field label="Select Size Graph" required>
               <Select value={sizeGraphId} onValueChange={setSizeGraphId}>
-                <Select.Trigger>
-                  <Select.Value placeholder="Choose a size graph…" />
-                </Select.Trigger>
+                <Select.Trigger><Select.Value placeholder="Choose a size graph…" /></Select.Trigger>
                 <Select.Content>
                   <Select.Item value="null">None selected</Select.Item>
                   {sizeGraphs.map((sg) => (
@@ -698,11 +638,11 @@ const CustomProductPage = () => {
               const sg = sizeGraphs.find((s) => s.id === sizeGraphId)
               if (!sg) return null
               return (
-                <div className="flex items-center gap-x-3 border border-ui-border-base rounded-md p-3 mt-1">
-                  <img src={sg.image} alt={sg.name} className="w-12 h-12 object-cover rounded" />
+                <div className="flex items-center gap-x-3 border border-ui-border-base rounded-md p-3 mt-1 bg-ui-bg-base text-left">
+                  <img src={sg.image} alt={sg.name} className="w-12 h-12 object-cover rounded border" />
                   <div>
-                    <Text className="font-medium">{sg.name}</Text>
-                    {sg.description && <Text className="text-ui-fg-subtle text-xs">{sg.description}</Text>}
+                    <Text className="font-medium text-sm">{sg.name}</Text>
+                    {sg.description && <Text className="text-ui-fg-subtle text-[10px] line-clamp-2">{sg.description}</Text>}
                   </div>
                 </div>
               )
@@ -713,27 +653,19 @@ const CustomProductPage = () => {
           <Section title="Organize">
             <Field label="Type">
               <Select value={typeId} onValueChange={setTypeId}>
-                <Select.Trigger>
-                  <Select.Value placeholder="Select type…" />
-                </Select.Trigger>
+                <Select.Trigger><Select.Value placeholder="Select type…" /></Select.Trigger>
                 <Select.Content>
                   <Select.Item value="null">None</Select.Item>
-                  {productTypes.map((t) => (
-                    <Select.Item key={t.id} value={t.id}>{t.value}</Select.Item>
-                  ))}
+                  {productTypes.map((t) => <Select.Item key={t.id} value={t.id}>{t.value}</Select.Item>)}
                 </Select.Content>
               </Select>
             </Field>
             <Field label="Collection">
               <Select value={collectionId} onValueChange={setCollectionId}>
-                <Select.Trigger>
-                  <Select.Value placeholder="Select collection…" />
-                </Select.Trigger>
+                <Select.Trigger><Select.Value placeholder="Select collection…" /></Select.Trigger>
                 <Select.Content>
                   <Select.Item value="null">None</Select.Item>
-                  {collections.map((c) => (
-                    <Select.Item key={c.id} value={c.id}>{c.title}</Select.Item>
-                  ))}
+                  {collections.map((c) => <Select.Item key={c.id} value={c.id}>{c.title}</Select.Item>)}
                 </Select.Content>
               </Select>
             </Field>
@@ -744,43 +676,6 @@ const CustomProductPage = () => {
                 onChange={setCategoryIds}
                 placeholder="Select categories…"
               />
-            </Field>
-            <Field label="Tags">
-              <MultiSelect
-                options={tags.map((t) => ({ id: t.id, label: t.value }))}
-                selected={tagIds}
-                onChange={setTagIds}
-                placeholder="Select tags…"
-              />
-            </Field>
-          </Section>
-
-          {/* Sales Channels */}
-          <Section title="Sales Channels" subtitle="Leave empty to use the default sales channel.">
-            <Field label="Channels">
-              <MultiSelect
-                options={salesChannels.map((sc) => ({ id: sc.id, label: sc.name }))}
-                selected={salesChannelIds}
-                onChange={setSalesChannelIds}
-                placeholder="Add sales channels…"
-              />
-            </Field>
-          </Section>
-
-          {/* Shipping Profile */}
-          <Section title="Shipping Profile" subtitle="Leave empty to use the default shipping profile.">
-            <Field label="Shipping Profile">
-              <Select value={shippingProfileId} onValueChange={setShippingProfileId}>
-                <Select.Trigger>
-                  <Select.Value placeholder="Use default…" />
-                </Select.Trigger>
-                <Select.Content>
-                  <Select.Item value="null">Use default</Select.Item>
-                  {shippingProfiles.map((sp) => (
-                    <Select.Item key={sp.id} value={sp.id}>{sp.name}</Select.Item>
-                  ))}
-                </Select.Content>
-              </Select>
             </Field>
           </Section>
 
@@ -800,12 +695,11 @@ const CustomProductPage = () => {
           <FocusModal.Header>
             <Heading level="h2">Create New Size Graph</Heading>
           </FocusModal.Header>
-          <FocusModal.Body className="flex flex-col items-center py-10 overflow-y-auto">
+          <FocusModal.Body className="flex flex-col items-center py-10 overflow-y-auto bg-ui-bg-subtle/20">
             <form
               onSubmit={(e) => { e.preventDefault(); createSizeGraph() }}
               className="w-full max-w-4xl flex flex-col gap-y-8"
             >
-              {/* Basic Info */}
               <div className="grid grid-cols-2 gap-x-6">
                 <div className="flex flex-col gap-y-4">
                   <Field label="Name" required>
@@ -818,108 +712,69 @@ const CustomProductPage = () => {
                 <Field label="Header Image (Optional)">
                   <Input type="file" accept="image/*" onChange={(e) => setSgImageFile(e.target.files?.[0] ?? null)} />
                   {sgImageFile && (
-                    <img
-                      src={URL.createObjectURL(sgImageFile)}
-                      className="h-32 w-full rounded border object-contain bg-ui-bg-subtle mt-2"
-                    />
+                    <img src={URL.createObjectURL(sgImageFile)} className="h-32 w-full rounded border object-contain bg-ui-bg-base mt-2 shadow-sm" />
                   )}
                 </Field>
               </div>
 
-              {/* Measurement Tables */}
               <div className="border-t pt-6">
                 <div className="flex items-center justify-between mb-4">
                   <Heading level="h2">Measurement Tables</Heading>
                   <Button type="button" variant="secondary" size="small" onClick={addSgTable}>
-                    + Add Table Section
+                    <Plus className="h-4 w-4" /> Add Section
                   </Button>
                 </div>
 
-                <div className="flex flex-col gap-y-10">
+                <div className="flex flex-col gap-y-8">
                   {sgTables.map((table, tIdx) => (
-                    <div key={tIdx} className="border rounded-lg p-6 bg-ui-bg-subtle/50 relative">
-                      <button 
-                        type="button"
-                        className="absolute top-2 right-2 text-rose-500 hover:bg-rose-50 p-1 rounded transition-colors"
+                    <div key={tIdx} className="border rounded-lg p-6 bg-ui-bg-base relative shadow-sm text-left">
+                      <IconButton 
+                        variant="transparent"
+                        className="absolute top-2 right-2 text-ui-fg-error"
                         onClick={() => removeSgTable(tIdx)}
                       >
-                        <XMarkMini />
-                      </button>
+                        <Trash className="h-4 w-4" />
+                      </IconButton>
 
                       <div className="flex flex-col gap-y-4">
-                        <div className="flex flex-col gap-y-2 max-w-sm text-left">
-                          <Label className="text-xs uppercase font-bold text-ui-fg-muted">Section Title</Label>
-                          <Input 
-                            value={table.title} 
-                            onChange={(e) => {
-                              const nt = [...sgTables]; nt[tIdx].title = e.target.value; setSgTables(nt)
-                            }}
-                          />
-                        </div>
+                        <Field label="Section Title">
+                          <Input value={table.title} onChange={(e) => { const nt = [...sgTables]; nt[tIdx].title = e.target.value; setSgTables(nt) }} />
+                        </Field>
 
-                        <div className="overflow-x-auto border rounded-md bg-ui-bg-base">
+                        <div className="overflow-x-auto border rounded-md bg-ui-bg-subtle/10">
                           <table className="w-full border-collapse">
                             <thead>
-                              <tr className="border-b bg-ui-bg-subtle text-left">
+                              <tr className="border-b bg-ui-bg-subtle/50 text-left">
                                 {table.columns.map((col, cIdx) => (
                                   <th key={cIdx} className="p-2 border-r last:border-r-0 min-w-[120px]">
                                     <div className="flex items-center gap-x-1">
-                                      <input 
-                                        className="bg-transparent border-none text-xs font-bold w-full focus:outline-none"
-                                        value={col}
-                                        onChange={(e) => updateSgColumnName(tIdx, cIdx, e.target.value)}
-                                      />
-                                      <button 
-                                        type="button"
-                                        onClick={() => removeSgColumn(tIdx, cIdx)}
-                                        className="text-rose-500"
-                                      >
-                                        <XMarkMini className="h-3 w-3" />
-                                      </button>
+                                      <input className="bg-transparent border-none text-xs font-bold w-full focus:outline-none" value={col} onChange={(e) => updateSgColumnName(tIdx, cIdx, e.target.value)} />
+                                      <IconButton variant="transparent" onClick={() => removeSgColumn(tIdx, cIdx)} className="text-ui-fg-error"><XMarkMini className="h-3 w-3" /></IconButton>
                                     </div>
                                   </th>
                                 ))}
                                 <th className="p-2 w-10 text-center">
-                                  <button type="button" onClick={() => addSgColumn(tIdx)} className="text-ui-fg-interactive">
-                                    +
-                                  </button>
+                                  <IconButton variant="transparent" onClick={() => addSgColumn(tIdx)} className="text-ui-fg-interactive"><Plus className="h-4 w-4" /></IconButton>
                                 </th>
                               </tr>
                             </thead>
                             <tbody>
                               {table.rows.map((row, rIdx) => (
-                                <tr key={rIdx} className="border-b last:border-b-0">
+                                <tr key={rIdx} className="border-b last:border-b-0 bg-ui-bg-base">
                                   {table.columns.map((col, cIdx) => (
                                     <td key={cIdx} className="p-1 border-r last:border-r-0">
-                                      <input 
-                                        className="w-full p-1 text-sm bg-transparent border-none focus:ring-1 focus:ring-ui-border-interactive rounded transition-all"
-                                        value={row[col] || ""}
-                                        onChange={(e) => updateSgCell(tIdx, rIdx, col, e.target.value)}
-                                        placeholder="..."
-                                      />
+                                      <input className="w-full p-1 text-sm bg-transparent border-none focus:ring-1 focus:ring-ui-border-interactive rounded transition-all" value={row[col] || ""} onChange={(e) => updateSgCell(tIdx, rIdx, col, e.target.value)} placeholder="..." />
                                     </td>
                                   ))}
                                   <td className="p-1 text-center">
-                                    <button 
-                                      type="button"
-                                      onClick={() => removeSgRow(tIdx, rIdx)}
-                                      className="text-rose-500"
-                                    >
-                                      <XMarkMini className="h-4 w-4" />
-                                    </button>
+                                    <IconButton variant="transparent" onClick={() => removeSgRow(tIdx, rIdx)} className="text-ui-fg-error"><Trash className="h-4 w-4" /></IconButton>
                                   </td>
                                 </tr>
                               ))}
                             </tbody>
                           </table>
-                          <Button 
-                            type="button" 
-                            variant="secondary" 
-                            size="small" 
-                            className="w-full rounded-none border-none border-t border-ui-border-base"
-                            onClick={() => addSgRow(tIdx)}
-                          >
-                            + Add Row
+                          <Button type="button" variant="secondary" size="small" className="w-full rounded-none border-none border-t" onClick={() => addSgRow(tIdx)}>
+                            <Plus className="mr-2 h-3 w-3" /> Add Row
                           </Button>
                         </div>
                       </div>
@@ -929,12 +784,8 @@ const CustomProductPage = () => {
               </div>
 
               <div className="flex items-center justify-end gap-x-2 pt-6 border-t">
-                <Button type="button" variant="secondary" onClick={() => setSgModalOpen(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit" isLoading={isCreatingSg}>
-                  Create Size Graph
-                </Button>
+                <Button type="button" variant="secondary" onClick={() => setSgModalOpen(false)}>Cancel</Button>
+                <Button type="submit" isLoading={isCreatingSg}>Create Size Graph</Button>
               </div>
             </form>
           </FocusModal.Body>
