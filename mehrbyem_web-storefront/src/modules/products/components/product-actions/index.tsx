@@ -42,7 +42,7 @@ export default function ProductActions({
 
   const [options, setOptions] = useState<Record<string, string | undefined>>({})
   const [measurements, setMeasurements] = useState<Record<string, any>>({})
-  const [customNote, setCustomNote] = useState("")
+  const [personalRequest, setPersonalRequest] = useState("")
   const [isAdding, setIsAdding] = useState(false)
   const countryCode = useParams().countryCode as string
 
@@ -155,7 +155,7 @@ export default function ProductActions({
     setIsAdding(true)
 
     const metadata: Record<string, any> = {
-      custom_note: customNote,
+      personal_request: personalRequest,
     }
 
     // Flatten all selected row properties into metadata
@@ -266,13 +266,13 @@ export default function ProductActions({
 
         <div className="flex flex-col gap-y-2 mb-4">
           <Label className="text-ui-fg-subtle text-xsmall-regular">
-            Additional Note (Optional)
+            Personal Request / Customization (Optional)
           </Label>
           <Textarea
-            placeholder="Any specific requests or additional dimensions..."
-            value={customNote}
-            onChange={(e) => setCustomNote(e.target.value)}
-            className="min-h-[80px]"
+            placeholder="e.g. Add sleeves, change neckline, or any specific requests..."
+            value={personalRequest}
+            onChange={(e) => setPersonalRequest(e.target.value)}
+            className="min-h-[100px]"
           />
         </div>
 
